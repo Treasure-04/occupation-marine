@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { auth } from "./firebase";
 
 const COLORS = {
   navy: "#0a1f3d",
@@ -31,6 +32,7 @@ function StatusBadge({ status }) {
 
 export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
+  const user = auth.currentUser;
   const [requests, setRequests] = useState(mockRequests);
   const [newRequest, setNewRequest] = useState({ service: "", details: "" });
 
@@ -52,10 +54,10 @@ export default function Dashboard() {
       <div style={{ backgroundColor: COLORS.navy, padding: "0 5%", display: "flex", alignItems: "center", justifyContent: "space-between", height: "65px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{ fontSize: "1.5rem" }}>⚓</span>
-          <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1rem" }}>OMSL Client Portal</div>
+          <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1rem" }}>Occupation Marine Services Ltd - Client Portal</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem" }}>Welcome, Client</span>
+          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem" }}>Welcome, {user?.displayName || user?.email}</span>
           <Link to="/" style={{ color: COLORS.gold, fontSize: "0.85rem", textDecoration: "none", fontWeight: "600" }}>Logout</Link>
         </div>
       </div>
@@ -97,7 +99,7 @@ export default function Dashboard() {
                 style={{ width: "100%", padding: "12px 16px", border: "1px solid rgba(10,31,61,0.2)", fontSize: "0.95rem", marginBottom: "12px", outline: "none", fontFamily: "inherit", backgroundColor: COLORS.white }}>
                 <option value="">Select a Service</option>
                 <option>Vessel and FPSO Tank Cleaning</option>
-                <option>Mining Services</option>
+                <option>Barging and Evacuation Services</option>
                 <option>Civil and Industrial Engineering</option>
                 <option>Oilfield Services</option>
                 <option>Environmental Consultancy</option>
