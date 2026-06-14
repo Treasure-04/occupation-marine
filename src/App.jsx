@@ -121,7 +121,7 @@ export default function App() {
           <Link to="/" style={{ display: "flex", alignItems: "center", gap: "10px", textDecoration: "none" }}>
             <span style={{ fontSize: "1.8rem" }}>⚓</span>
             <div>
-              <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1.1rem", lineHeight: 1.2 }}>OMSL</div>
+              <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1.1rem", lineHeight: 1.2 }}>OCCUPATION MARINE SERVICES LTD</div>
               <div style={{ color: COLORS.gold, fontSize: "0.65rem", letterSpacing: "2px", textTransform: "uppercase" }}>Marine Services</div>
             </div>
           </Link>
