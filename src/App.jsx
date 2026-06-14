@@ -32,7 +32,7 @@ const heroSlides = [
 
 const services = [
   { icon: "🛢️", title: "Vessel & FPSO Tank Cleaning", desc: "Professional cleaning of vessels and FPSO units to the highest safety standards." },
-  { icon: "⛏️", title: "Mining Services", desc: "Expert mining operations supporting Nigeria's resource extraction industry." },
+  { icon: "🚢", title: "Barging and Evacuation Services", desc: "Professional barging and evacuation services supporting Nigeria's oil and gas operations." },
   { icon: "🏗️", title: "Civil & Industrial Engineering", desc: "Comprehensive engineering solutions for industrial and civil infrastructure." },
   { icon: "🔧", title: "Oilfield Services", desc: "Full-spectrum oilfield support for private and public sector clients across Nigeria." },
   { icon: "🌿", title: "Environmental Consultancy", desc: "Sustainable environmental impact assessments for the oil & gas sector." },
