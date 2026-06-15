@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { auth } from "./firebase";
+import { collection, addDoc, query, where, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "./firebase";
 
 const COLORS = {
   navy: "#0a1f3d",
@@ -11,12 +12,6 @@ const COLORS = {
   darkGray: "#1e293b",
 };
 
-const mockRequests = [
-  { id: 1, service: "Vessel Tank Cleaning", date: "2026-06-01", status: "Completed" },
-  { id: 2, service: "Oilfield Services", date: "2026-06-05", status: "In Progress" },
-  { id: 3, service: "Labour Supply", date: "2026-06-10", status: "Pending" },
-];
-
 function StatusBadge({ status }) {
   const colors = {
     Completed: { bg: "#dcfce7", color: "#166534" },
@@ -24,7 +19,7 @@ function StatusBadge({ status }) {
     Pending: { bg: "#fee2e2", color: "#991b1b" },
   };
   return (
-    <span style={{ backgroundColor: colors[status].bg, color: colors[status].color, padding: "4px 12px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: "600" }}>
+    <span style={{ backgroundColor: colors[status]?.bg || "#f4f6f9", color: colors[status]?.color || "#000", padding: "4px 12px", borderRadius: "20px", fontSize: "0.78rem", fontWeight: "600" }}>
       {status}
     </span>
   );
@@ -32,20 +27,39 @@ function StatusBadge({ status }) {
 
 export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
-  const user = auth.currentUser;
-  const [requests, setRequests] = useState(mockRequests);
+  const [requests, setRequests] = useState([]);
   const [newRequest, setNewRequest] = useState({ service: "", details: "" });
+  const [loading, setLoading] = useState(true);
+  const user = auth.currentUser;
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    if (!user) return;
+    const q = query(collection(db, "requests"), where("userId", "==", user.uid));
+    const unsub = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setRequests(data);
+      setLoading(false);
+    });
+    return () => unsub();
+  }, [user]);
+
+  const handleSubmit = async () => {
     if (!newRequest.service || !newRequest.details) return;
-    setRequests([...requests, {
-      id: requests.length + 1,
-      service: newRequest.service,
-      date: new Date().toISOString().split("T")[0],
-      status: "Pending"
-    }]);
-    setNewRequest({ service: "", details: "" });
-    setShowForm(false);
+    try {
+      await addDoc(collection(db, "requests"), {
+        userId: user.uid,
+        userName: user.displayName || user.email,
+        service: newRequest.service,
+        details: newRequest.details,
+        status: "Pending",
+        createdAt: serverTimestamp(),
+        date: new Date().toISOString().split("T")[0],
+      });
+      setNewRequest({ service: "", details: "" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error adding request:", err);
+    }
   };
 
   return (
@@ -54,11 +68,11 @@ export default function Dashboard() {
       <div style={{ backgroundColor: COLORS.navy, padding: "0 5%", display: "flex", alignItems: "center", justifyContent: "space-between", height: "65px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <span style={{ fontSize: "1.5rem" }}>⚓</span>
-          <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1rem" }}>Occupation Marine Services Ltd - Client Portal</div>
+          <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "0.95rem" }}>Occupation Marine Services Ltd</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem" }}>Welcome, {user?.displayName || user?.email}</span>
-          <Link to="/" style={{ color: COLORS.gold, fontSize: "0.85rem", textDecoration: "none", fontWeight: "600" }}>Logout</Link>
+          <Link to="/" style={{ color: COLORS.gold, fontSize: "0.85rem", textDecoration: "none", fontWeight: "600" }} onClick={() => auth.signOut()}>Logout</Link>
         </div>
       </div>
 
@@ -114,25 +128,34 @@ export default function Dashboard() {
             </div>
           )}
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ borderBottom: "2px solid #f4f6f9" }}>
-                {["#", "Service", "Date", "Status"].map(h => (
-                  <th key={h} style={{ textAlign: "left", padding: "12px 8px", color: COLORS.gray, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {requests.map((r, i) => (
-                <tr key={r.id} style={{ borderBottom: "1px solid #f4f6f9", backgroundColor: i % 2 === 0 ? COLORS.white : COLORS.offWhite }}>
-                  <td style={{ padding: "14px 8px", color: COLORS.gray, fontSize: "0.85rem" }}>{r.id}</td>
-                  <td style={{ padding: "14px 8px", color: COLORS.darkGray, fontSize: "0.9rem", fontWeight: "500" }}>{r.service}</td>
-                  <td style={{ padding: "14px 8px", color: COLORS.gray, fontSize: "0.85rem" }}>{r.date}</td>
-                  <td style={{ padding: "14px 8px" }}><StatusBadge status={r.status} /></td>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "40px", color: COLORS.gray }}>Loading requests...</div>
+          ) : requests.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px", color: COLORS.gray }}>
+              <div style={{ fontSize: "3rem", marginBottom: "12px" }}>📋</div>
+              <p>No requests yet. Click "New Request" to get started!</p>
+            </div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid #f4f6f9" }}>
+                  {["#", "Service", "Date", "Status"].map(h => (
+                    <th key={h} style={{ textAlign: "left", padding: "12px 8px", color: COLORS.gray, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px" }}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {requests.map((r, i) => (
+                  <tr key={r.id} style={{ borderBottom: "1px solid #f4f6f9", backgroundColor: i % 2 === 0 ? COLORS.white : COLORS.offWhite }}>
+                    <td style={{ padding: "14px 8px", color: COLORS.gray, fontSize: "0.85rem" }}>{i + 1}</td>
+                    <td style={{ padding: "14px 8px", color: COLORS.darkGray, fontSize: "0.9rem", fontWeight: "500" }}>{r.service}</td>
+                    <td style={{ padding: "14px 8px", color: COLORS.gray, fontSize: "0.85rem" }}>{r.date}</td>
+                    <td style={{ padding: "14px 8px" }}><StatusBadge status={r.status} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
