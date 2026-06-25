@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth, db } from "./firebase";
 
 const COLORS = {
@@ -25,18 +26,28 @@ function Field({ label, value, onChange, placeholder, type = "text" }) {
 }
 
 export default function Profile() {
-  const user = auth.currentUser;
   const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [form, setForm] = useState({ name: "", phone: "", company: "", address: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      navigate("/login");
-      return;
-    }
+    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
+      setAuthChecked(true);
+      if (!firebaseUser) {
+        navigate("/login");
+        return;
+      }
+      setUser(firebaseUser);
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
     async function loadProfile() {
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -57,7 +68,7 @@ export default function Profile() {
       setLoading(false);
     }
     loadProfile();
-  }, []);
+  }, [user]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -77,7 +88,7 @@ export default function Profile() {
     setSaving(false);
   };
 
-  if (loading) {
+  if (!authChecked || loading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: COLORS.offWhite, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
         <div style={{ color: COLORS.navy }}>Loading profile...</div>
