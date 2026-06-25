@@ -71,7 +71,7 @@ export default function Dashboard() {
           <div style={{ color: COLORS.white, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "0.95rem" }}>Occupation Marine Services Ltd</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem" }}>Welcome, {user?.displayName || user?.email}</span>
+          <Link to="/profile" style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.85rem", textDecoration: "none" }}>Welcome, {user?.displayName || user?.email} (Edit Profile)</Link>
           <Link to="/" style={{ color: COLORS.gold, fontSize: "0.85rem", textDecoration: "none", fontWeight: "600" }} onClick={() => auth.signOut()}>Logout</Link>
         </div>
       </div>
