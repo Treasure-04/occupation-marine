@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth } from "./firebase";
-import { useEffect } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
 
 const COLORS = {
   navy: "#0a1f3d",
@@ -11,6 +11,19 @@ const COLORS = {
   offWhite: "#f4f6f9",
   gray: "#6b7280",
 };
+
+async function redirectByRole(uid, navigate) {
+  try {
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (userDoc.exists() && userDoc.data().role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
+  } catch (err) {
+    navigate("/dashboard");
+  }
+}
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -21,7 +34,7 @@ export default function Login() {
   useEffect(() => {
     getRedirectResult(auth).then(result => {
       if (result?.user) {
-        navigate("/dashboard");
+        redirectByRole(result.user.uid, navigate);
       }
     }).catch(err => {
       setError("Google sign in failed. Please try again.");
@@ -36,8 +49,8 @@ export default function Login() {
     setLoading(true);
     setError("");
     try {
-      await signInWithEmailAndPassword(auth, form.email, form.password);
-      navigate("/dashboard");
+      const result = await signInWithEmailAndPassword(auth, form.email, form.password);
+      await redirectByRole(result.user.uid, navigate);
     } catch (err) {
       setError("Invalid email or password. Please try again.");
     }
@@ -62,7 +75,7 @@ export default function Login() {
 
         <div style={{ textAlign: "center", marginBottom: "36px" }}>
           <div style={{ fontSize: "2.5rem", marginBottom: "8px" }}>⚓</div>
-          <div style={{ color: COLORS.navy, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1.4rem" }}>OMSL</div>
+          <div style={{ color: COLORS.navy, fontFamily: "'Georgia', serif", fontWeight: "bold", fontSize: "1.4rem" }}>Occupation Marine Services Ltd</div>
           <div style={{ color: COLORS.gold, fontSize: "0.7rem", letterSpacing: "3px", textTransform: "uppercase" }}>Client Portal</div>
         </div>
 
