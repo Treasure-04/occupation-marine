@@ -49,6 +49,7 @@ export default function Dashboard() {
       await addDoc(collection(db, "requests"), {
         userId: user.uid,
         userName: user.displayName || user.email,
+        userEmail: user.email,
         service: newRequest.service,
         details: newRequest.details,
         status: "Pending",

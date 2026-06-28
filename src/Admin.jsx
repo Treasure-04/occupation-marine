@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { collection, query, onSnapshot, doc, updateDoc, getDoc, orderBy } from "firebase/firestore";
 import { auth, db } from "./firebase";
+import emailjs from "@emailjs/browser";
 
 const COLORS = {
   navy: "#0a1f3d",
@@ -11,6 +12,10 @@ const COLORS = {
   gray: "#6b7280",
   darkGray: "#1e293b",
 };
+
+const EMAILJS_SERVICE_ID = "service_2x8xt3a";
+const EMAILJS_TEMPLATE_ID = "template_i7tfhc6";
+const EMAILJS_PUBLIC_KEY = "ZFAZHC99UzQrRCaJR";
 
 function StatusBadge({ status }) {
   const colors = {
@@ -31,6 +36,7 @@ export default function Admin() {
   const [checkingAccess, setCheckingAccess] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [filter, setFilter] = useState("All");
+  const [emailStatus, setEmailStatus] = useState({});
   const user = auth.currentUser;
   const navigate = useNavigate();
 
@@ -66,9 +72,33 @@ export default function Admin() {
     return () => unsub();
   }, [hasAccess]);
 
-  const handleStatusChange = async (requestId, newStatus) => {
+  const sendStatusEmail = async (request, newStatus) => {
     try {
-      await updateDoc(doc(db, "requests", requestId), { status: newStatus });
+      let clientEmail = request.userEmail;
+      if (!clientEmail) {
+        const userDoc = await getDoc(doc(db, "users", request.userId));
+        clientEmail = userDoc.exists() ? userDoc.data().email : null;
+      }
+      if (!clientEmail) return;
+
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_name: request.userName || "Client",
+        to_email: clientEmail,
+        service: request.service,
+        status: newStatus,
+      }, EMAILJS_PUBLIC_KEY);
+
+      setEmailStatus(prev => ({ ...prev, [request.id]: "sent" }));
+    } catch (err) {
+      console.error("Email send error:", err);
+      setEmailStatus(prev => ({ ...prev, [request.id]: "failed" }));
+    }
+  };
+
+  const handleStatusChange = async (request, newStatus) => {
+    try {
+      await updateDoc(doc(db, "requests", request.id), { status: newStatus });
+      sendStatusEmail(request, newStatus);
     } catch (err) {
       console.error("Error updating status:", err);
     }
@@ -83,7 +113,6 @@ export default function Admin() {
   }
 
   const filteredRequests = filter === "All" ? requests : requests.filter(r => r.status === filter);
-
   const uniqueClients = new Set(requests.map(r => r.userId)).size;
 
   return (
@@ -150,10 +179,10 @@ export default function Admin() {
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "700px" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "750px" }}>
                 <thead>
                   <tr style={{ borderBottom: "2px solid #f4f6f9" }}>
-                    {["Client", "Service", "Details", "Date", "Status", "Update Status"].map(h => (
+                    {["Client", "Service", "Details", "Date", "Status", "Update Status", "Email"].map(h => (
                       <th key={h} style={{ textAlign: "left", padding: "12px 8px", color: COLORS.gray, fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "1px" }}>{h}</th>
                     ))}
                   </tr>
@@ -167,12 +196,15 @@ export default function Admin() {
                       <td style={{ padding: "14px 8px", color: COLORS.gray, fontSize: "0.85rem" }}>{r.date}</td>
                       <td style={{ padding: "14px 8px" }}><StatusBadge status={r.status} /></td>
                       <td style={{ padding: "14px 8px" }}>
-                        <select value={r.status} onChange={e => handleStatusChange(r.id, e.target.value)}
+                        <select value={r.status} onChange={e => handleStatusChange(r, e.target.value)}
                           style={{ padding: "6px 10px", fontSize: "0.82rem", border: "1px solid rgba(10,31,61,0.2)", backgroundColor: COLORS.white, fontFamily: "inherit" }}>
                           <option>Pending</option>
                           <option>In Progress</option>
                           <option>Completed</option>
                         </select>
+                      </td>
+                      <td style={{ padding: "14px 8px", fontSize: "0.78rem", color: emailStatus[r.id] === "sent" ? "#166534" : emailStatus[r.id] === "failed" ? "#991b1b" : COLORS.gray }}>
+                        {emailStatus[r.id] === "sent" ? "✓ Sent" : emailStatus[r.id] === "failed" ? "✗ Failed" : "—"}
                       </td>
                     </tr>
                   ))}
